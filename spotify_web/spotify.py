@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import re
 import json
 import operator
@@ -10,11 +9,8 @@ from threading import Thread, Event, Lock
 import requests
 from ws4py.client.threadedclient import WebSocketClient
 
-from .proto import mercury_pb2, metadata_pb2, playlist4changes_pb2,\
-    playlist4ops_pb2, playlist4service_pb2, toplist_pb2
-
-# from .proto import playlist4meta_pb2, playlist4issues_pb2,
-# playlist4content_pb2
+from .proto import (mercury_pb2, metadata_pb2, playlist4changes_pb2,
+                    playlist4ops_pb2, playlist4service_pb2, toplist_pb2)
 
 
 base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -72,7 +68,7 @@ class WrapAsync():
                 self.data = self.data[1:]
 
             return self.data if len(self.data) > 1 else self.data[0]
-        except:
+        except Exception, e:
             return False
 
 
@@ -102,8 +98,8 @@ class SpotifyUtil():
         while v > 0:
             res = [v % 62] + res
             v /= 62
-        id = ''.join([base62[i] for i in res])
-        return ("spotify:"+uritype+":"+id).rjust(22, "0")
+        guid = ''.join([base62[i] for i in res])
+        return ("spotify:"+uritype+":"+guid).rjust(22, "0")
 
     @staticmethod
     def uri2id(uri):
@@ -120,8 +116,8 @@ class SpotifyUtil():
 
     @staticmethod
     def gid2uri(uritype, gid):
-        id = SpotifyUtil.gid2id(gid)
-        uri = SpotifyUtil.id2uri(uritype, id)
+        guid = SpotifyUtil.gid2id(gid)
+        uri = SpotifyUtil.id2uri(uritype, guid)
         return uri
 
     @staticmethod
@@ -154,9 +150,7 @@ class SpotifyAPI():
         self.password = None
         self.account_type = None
         self.country = None
-
         self.settings = None
-
         self.disconnecting = False
         self.ws = None
         self.ws_lock = Lock()
@@ -194,7 +188,9 @@ class SpotifyAPI():
             "password": password,
             "secret": secret,
         }
-        resp = session.post("https://" + self.auth_server + "/xhr/json/auth.php", data=login_payload, headers=headers)
+        resp = session.post(
+            "https://" + self.auth_server + "/xhr/json/auth.php",
+            data=login_payload, headers=headers)
         resp_json = resp.json()
 
         if resp_json["status"] != "OK":
@@ -209,7 +205,9 @@ class SpotifyAPI():
             "client": "24:0:0:" + str(self.settings["version"])
         }
 
-        resp = session.get('http://' + self.settings["aps"]["resolver"]["hostname"], params=resolver_payload, headers=headers)
+        resp = session.get(
+            'http://' + self.settings["aps"]["resolver"]["hostname"],
+            params=resolver_payload, headers=headers)
 
         resp_json = resp.json()
         wss_hostname = resp_json["ap_list"][0].split(":")[0]
@@ -218,7 +216,7 @@ class SpotifyAPI():
 
         return True
 
-    def populate_userdata_callback(self, sp, resp):
+    def populate_user_data_callback(self, sp, resp):
         self.username = resp["user"]
         self.country = resp["country"]
         self.account_type = resp["catalogue"]
@@ -244,7 +242,7 @@ class SpotifyAPI():
             self.logged_in_marker.set()
 
     def logged_in(self, sp, resp):
-        self.user_info_request(self.populate_userdata_callback)
+        self.user_info_request(self.populate_user_data_callback)
 
     def login(self):
         Logging.notice("Logging in")
@@ -385,13 +383,6 @@ class SpotifyAPI():
             for alternative in track.alternative:
                 if self.is_track_available(alternative, country):
                     return alternative
-            return False
-            for alternative in track.alternative:
-                uri = SpotifyUtil.gid2uri("track", alternative.gid)
-                if uri not in attempted:
-                    attempted += [uri]
-                    subtrack = self.metadata_request(uri)
-                    return self.recurse_alternatives(subtrack, attempted)
             return False
 
     def generate_multiget_args(self, metadata_type, requests):

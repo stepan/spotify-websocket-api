@@ -9,8 +9,8 @@ setup(
     author_email='hexxeh@hexxeh.net',
     packages=['spotify_web', 'spotify_web.proto'],
     install_requires=[
-        'requests>=1.1.0',
-        'ws4py>=0.2.4',
-        'lxml>=3.1beta1',
-        'protobuf>=2.4.1'],
+        'requests==1.2.3',
+        'ws4py==0.2.4',
+        'lxml==3.2.3',
+        'protobuf==2.5.5'],
 )
