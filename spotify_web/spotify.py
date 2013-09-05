@@ -27,7 +27,7 @@ class WrapAsync():
         if callback is None:
             callback = self.callback
         elif type(callback) == list:
-            callback = callback+[self.callback]
+            callback = callback + [self.callback]
         else:
             callback = [callback, self.callback]
 
@@ -77,7 +77,7 @@ class SpotifyUtil():
             res = [v % 62] + res
             v /= 62
         guid = ''.join([base62[i] for i in res])
-        return ("spotify:"+uritype+":"+guid).rjust(22, "0")
+        return ("spotify:" + uritype + ":" + guid).rjust(22, "0")
 
     @staticmethod
     def uri2id(uri):
@@ -121,7 +121,6 @@ class SpotifyUtil():
 class SpotifyAPI():
     def __init__(self, login_callback_func=False):
         self.auth_server = "play.spotify.com"
-
         self.logged_in_marker = Event()
         self.heartbeat_marker = Event()
         self.username = None
@@ -143,19 +142,19 @@ class SpotifyAPI():
             return False
 
         headers = {
-            "User-Agent": "node-spotify-web in python (Chrome/13.37 compatible-ish)",
+            "User-Agent": "node-spotify-web in python (Chrome/13.37 "
+                          "compatible-ish)",
         }
 
         session = requests.session()
-
         resp = session.get("https://" + self.auth_server, headers=headers)
         data = resp.text
-
         rx = re.compile("\"csrftoken\":\"(.*?)\"")
         r = rx.search(data)
 
         if not r or len(r.groups()) < 1:
-            logger.error("There was a problem authenticating, no auth secret found")
+            logger.error(
+                "There was a problem authenticating, no auth secret found")
             self.do_login_callback(False)
             return False
         secret = r.groups()[0]
@@ -172,7 +171,8 @@ class SpotifyAPI():
         resp_json = resp.json()
 
         if resp_json["status"] != "OK":
-            logger.error("There was a problem authenticating, authentication failed")
+            logger.error(
+                "There was a problem authenticating, authentication failed")
             self.do_login_callback(False)
             return False
 
@@ -259,7 +259,8 @@ class SpotifyAPI():
                 items.append(item)
             ret = items
         else:
-            ret = self.parse_metadata_item(header.status_message, base64.decodestring(resp[1]))
+            ret = self.parse_metadata_item(header.status_message,
+                                           base64.decodestring(resp[1]))
 
         self.chain_callback(sp, ret, callback_data)
 
@@ -307,13 +308,17 @@ class SpotifyAPI():
 
         for restriction in track.restriction:
             allowed_str = restriction.countries_allowed
-            allowed_countries += [allowed_str[i:i+2] for i in range(0, len(allowed_str), 2)]
+            allowed_countries += [allowed_str[i:i + 2] for i in
+                                  range(0, len(allowed_str), 2)]
 
             forbidden_str = restriction.countries_forbidden
-            forbidden_countries += [forbidden_str[i:i+2] for i in range(0, len(forbidden_str), 2)]
+            forbidden_countries += [forbidden_str[i:i + 2] for i in
+                                    range(0, len(forbidden_str), 2)]
 
-            allowed = not restriction.HasField("countries_allowed") or country in allowed_countries
-            forbidden = self.country in forbidden_countries and len(forbidden_countries) > 0
+            allowed = not restriction.HasField(
+                "countries_allowed") or country in allowed_countries
+            forbidden = self.country in forbidden_countries and len(
+                forbidden_countries) > 0
 
             if country in allowed_countries and country in forbidden_countries:
                 allowed = True
@@ -328,23 +333,16 @@ class SpotifyAPI():
 
             applicable = account_type_map[self.account_type] in restriction.catalogue
 
-            # enable this to help debug restriction issues
-            if False:
-                print restriction
-                print allowed_countries
-                print forbidden_countries
-                print "allowed: "+str(allowed)
-                print "forbidden: "+str(forbidden)
-                print "applicable: "+str(applicable)
-
-            available = True == allowed and False == forbidden and True == applicable
+            available = allowed and not forbidden and applicable
             if available:
                 break
 
         if available:
-            logger.warning(SpotifyUtil.gid2uri("track", track.gid) + " is available!")
+            logger.warning(
+                SpotifyUtil.gid2uri("track", track.gid) + " is available!")
         else:
-            logger.warning(SpotifyUtil.gid2uri("track", track.gid) + " is NOT available!")
+            logger.warning(
+                SpotifyUtil.gid2uri("track", track.gid) + " is NOT available!")
 
         return available
 
@@ -369,7 +367,7 @@ class SpotifyAPI():
         else:
             header = mercury_pb2.MercuryRequest()
             header.body = "GET"
-            header.uri = "hm://metadata/"+metadata_type+"s"
+            header.uri = "hm://metadata/" + metadata_type + "s"
             header.content_type = "vnd.spotify/mercury-mget-request"
 
             header_str = base64.encodestring(header.SerializeToString())
@@ -378,17 +376,20 @@ class SpotifyAPI():
 
         return args
 
-    def wrap_request(self, command, args, callback, int_callback=None, retries=3):
+    def wrap_request(self, command, args, callback, int_callback=None,
+                     retries=3):
         if not callback:
             for attempt in range(0, retries):
-                data = WrapAsync(int_callback, self.send_command, command, args).get_data()
+                data = WrapAsync(int_callback, self.send_command, command,
+                                 args).get_data()
                 if data:
                     break
             return data
         else:
             callback = [callback] if type(callback) != list else callback
             if int_callback is not None:
-                int_callback = [int_callback] if type(int_callback) != list else int_callback
+                int_callback = [int_callback] if type(
+                    int_callback) != list else int_callback
                 callback += int_callback
             self.send_command(command, args, callback)
 
@@ -401,36 +402,41 @@ class SpotifyAPI():
         for uri in uris:
             uri_type = SpotifyUtil.get_uri_type(uri)
             if uri_type == "local":
-                logger.warning("Track with URI "+uri+" is a local track, we can't request metadata, skipping")
+                logger.warning(
+                    "Track with URI {0} is a local track, we can't "
+                    "request metadata, skipping".format(uri))
                 continue
 
-            id = SpotifyUtil.uri2id(uri)
+            sid = SpotifyUtil.uri2id(uri)
 
             mercury_request = mercury_pb2.MercuryRequest()
             mercury_request.body = "GET"
-            mercury_request.uri = "hm://metadata/"+uri_type+"/"+id
+            mercury_request.uri = "hm://metadata/" + uri_type + "/" + sid
 
             mercury_requests.request.extend([mercury_request])
 
-        args = self.generate_multiget_args(SpotifyUtil.get_uri_type(uris[0]), mercury_requests)
+        args = self.generate_multiget_args(SpotifyUtil.get_uri_type(uris[0]),
+                                           mercury_requests)
 
-        return self.wrap_request("sp/hm_b64", args, callback, self.parse_metadata)
+        return self.wrap_request("sp/hm_b64", args, callback,
+                                 self.parse_metadata)
 
-    def toplist_request(self, toplist_content_type="track", toplist_type="user", username=None, region="global", callback=False):
+    def toplist_request(self, toplist_content_type="track", toplist_type="user",
+                        username=None, region="global", callback=False):
         if username is None:
             username = self.username
 
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "GET"
         if toplist_type == "user":
-            mercury_request.uri = "hm://toplist/toplist/user/"+username
+            mercury_request.uri = "hm://toplist/toplist/user/" + username
         elif toplist_type == "region":
             mercury_request.uri = "hm://toplist/toplist/region"
             if region is not None and region != "global":
-                mercury_request.uri += "/"+region
+                mercury_request.uri += "/" + region
         else:
             return False
-        mercury_request.uri += "?type="+toplist_content_type
+        mercury_request.uri += "?type=" + toplist_content_type
 
         # playlists don't appear to work?
         if toplist_type == "user" and toplist_content_type == "playlist":
@@ -442,7 +448,8 @@ class SpotifyAPI():
 
         args = [0, req]
 
-        return self.wrap_request("sp/hm_b64", args, callback, self.parse_toplist)
+        return self.wrap_request("sp/hm_b64", args, callback,
+                                 self.parse_toplist)
 
     def playlists_request(self, user, fromnum=0, num=100, callback=False):
         if num > 100:
@@ -451,12 +458,14 @@ class SpotifyAPI():
 
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "GET"
-        mercury_request.uri = "hm://playlist/user/"+user+"/rootlist?from=" + str(fromnum) + "&length=" + str(num)
+        mercury_request.uri = "hm://playlist/user/" + user + "/rootlist?from=" + str(
+            fromnum) + "&length=" + str(num)
         req = base64.encodestring(mercury_request.SerializeToString())
 
         args = [0, req]
 
-        return self.wrap_request("sp/hm_b64", args, callback, self.parse_playlist)
+        return self.wrap_request("sp/hm_b64", args, callback,
+                                 self.parse_playlist)
 
     def playlist_request(self, uri, fromnum=0, num=100, callback=False):
         # mercury_requests = mercury_pb2.MercuryRequest()
@@ -464,12 +473,14 @@ class SpotifyAPI():
         playlist = uri[8:].replace(":", "/")
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "GET"
-        mercury_request.uri = "hm://playlist/" + playlist + "?from=" + str(fromnum) + "&length=" + str(num)
+        mercury_request.uri = "hm://playlist/" + playlist + "?from=" + str(
+            fromnum) + "&length=" + str(num)
 
         req = base64.encodestring(mercury_request.SerializeToString())
         args = [0, req]
 
-        return self.wrap_request("sp/hm_b64", args, callback, self.parse_playlist)
+        return self.wrap_request("sp/hm_b64", args, callback,
+                                 self.parse_playlist)
 
     def playlist_op_track(self, playlist_uri, track_uri, op, callback=None):
         playlist = playlist_uri.split(":")
@@ -482,11 +493,11 @@ class SpotifyAPI():
             if playlist[3] == "starred":
                 playlist_id = "starred"
             else:
-                playlist_id = "playlist/"+playlist[4]
+                playlist_id = "playlist/" + playlist[4]
 
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = op
-        mercury_request.uri = "hm://playlist/user/"+user+"/" + playlist_id + "?syncpublished=1"
+        mercury_request.uri = "hm://playlist/user/" + user + "/" + playlist_id + "?syncpublished=1"
         req = base64.encodestring(mercury_request.SerializeToString())
         args = [0, req, base64.encodestring(track_uri)]
         return self.wrap_request("sp/hm_b64", args, callback)
@@ -495,15 +506,21 @@ class SpotifyAPI():
         return self.playlist_op_track(playlist_uri, track_uri, "ADD", callback)
 
     def playlist_remove_track(self, playlist_uri, track_uri, callback=False):
-        return self.playlist_op_track(playlist_uri, track_uri, "REMOVE", callback)
+        return self.playlist_op_track(playlist_uri, track_uri, "REMOVE",
+                                      callback)
 
     def set_starred(self, track_uri, starred=True, callback=False):
         if starred:
-            return self.playlist_add_track("spotify:user:"+self.username+":starred", track_uri, callback)
+            return self.playlist_add_track(
+                "spotify:user:" + self.username + ":starred", track_uri,
+                callback)
         else:
-            return self.playlist_remove_track("spotify:user:"+self.username+":starred", track_uri, callback)
+            return self.playlist_remove_track(
+                "spotify:user:" + self.username + ":starred", track_uri,
+                callback)
 
-    def playlist_op(self, op, path, optype="update", name=None, index=None, callback=None):
+    def playlist_op(self, op, path, optype="update", name=None, index=None,
+                    callback=None):
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = op
         mercury_request.uri = "hm://" + path
@@ -522,22 +539,25 @@ class SpotifyAPI():
         mercury_request_payload = mercury_pb2.MercuryRequest()
         mercury_request_payload.uri = op.SerializeToString()
 
-        payload = base64.encodestring(mercury_request_payload.SerializeToString())
+        payload = base64.encodestring(
+            mercury_request_payload.SerializeToString())
 
         args = [0, req, payload]
-        return self.wrap_request("sp/hm_b64", args, callback, self.new_playlist_callback)
+        return self.wrap_request("sp/hm_b64", args, callback,
+                                 self.new_playlist_callback)
 
     def new_playlist(self, name, callback=False):
-        return self.playlist_op("PUT", "playlist/user/"+self.username, name=name, callback=callback)
+        return self.playlist_op("PUT", "playlist/user/" + self.username,
+                                name=name, callback=callback)
 
     def rename_playlist(self, playlist_uri, name, callback=False):
-        path = "playlist/user/"+self.username+"/playlist/"+playlist_uri.split(":")[4]+"?syncpublished=true"
+        path = "playlist/user/{0}/playlist/{1}?syncpublished=true".format(
+            self.username, playlist_uri.split(":")[4])
         return self.playlist_op("MODIFY", path, name=name, callback=callback)
 
     def remove_playlist(self, playlist_uri, callback=False):
-        return self.playlist_op_track("rootlist", playlist_uri, "REMOVE", callback=callback)
-        #return self.playlist_op("REMOVE", "playlist/user/"+self.username+"/rootlist?syncpublished=true",
-                                #optype="remove", index=index, callback=callback)
+        return self.playlist_op_track("rootlist", playlist_uri, "REMOVE",
+                                      callback=callback)
 
     def new_playlist_callback(self, sp, data, callback_data):
         try:
@@ -548,14 +568,15 @@ class SpotifyAPI():
 
         mercury_request = mercury_pb2.MercuryRequest()
         mercury_request.body = "ADD"
-        mercury_request.uri = "hm://playlist/user/"+self.username+"/rootlist?add_first=1&syncpublished=1"
+        mercury_request.uri = "hm://playlist/user/" + self.username + "/rootlist?add_first=1&syncpublished=1"
         req = base64.encodestring(mercury_request.SerializeToString())
         args = [0, req, base64.encodestring(reply.uri)]
 
         self.chain_callback(sp, reply.uri, callback_data)
         self.send_command("sp/hm_b64", args)
 
-    def search_request(self, query, query_type="all", max_results=50, offset=0, callback=False):
+    def search_request(self, query, query_type="all", max_results=50, offset=0,
+                       callback=False):
         if max_results > 50:
             logger.warning("Maximum of 50 results per request, capping at 50")
             max_results = 50
@@ -568,9 +589,12 @@ class SpotifyAPI():
 
         }
 
-        query_type = [k for k, v in search_types.items()] if query_type == "all" else query_type
+        query_type = [k for k, v in
+                      search_types.items()] if query_type == "all" else query_type
         query_type = [query_type] if type(query_type) != list else query_type
-        query_type = reduce(operator.or_, [search_types[type_name] for type_name in query_type if type_name in search_types])
+        query_type = reduce(operator.or_,
+                            [search_types[type_name] for type_name in query_type
+                             if type_name in search_types])
 
         args = [query, query_type, max_results, offset]
 
@@ -600,7 +624,11 @@ class SpotifyAPI():
         referrer_version = "0.1.0"
         referrer_vendor = "com.spotify"
         max_continuous = ms_played
-        args = [lid, ms_played, ms_played_union, n_seeks_forward, n_seeks_backward, ms_seeks_forward, ms_seeks_backward, ms_latency, display_track, play_context, source_start, source_end, reason_start, reason_end, referrer, referrer_version, referrer_vendor, max_continuous]
+        args = [lid, ms_played, ms_played_union, n_seeks_forward,
+                n_seeks_backward, ms_seeks_forward, ms_seeks_backward,
+                ms_latency, display_track, play_context, source_start,
+                source_end, reason_start, reason_end, referrer,
+                referrer_version, referrer_vendor, max_continuous]
         return self.wrap_request("sp/track_end", args, callback)
 
     def send_track_event(self, lid, event, ms_where, callback=False):
@@ -610,7 +638,8 @@ class SpotifyAPI():
             ev_n = 3
         else:
             return False
-        return self.wrap_request("sp/track_event", [lid, ev_n, int(ms_where)], callback)
+        return self.wrap_request("sp/track_event", [lid, ev_n, int(ms_where)],
+                                 callback)
 
     def send_track_progress(self, lid, ms_played, callback=False):
         source_start = "unknown"
@@ -621,7 +650,9 @@ class SpotifyAPI():
         referrer = "unknown"
         referrer_version = "0.1.0"
         referrer_vendor = "com.spotify"
-        args = [lid, source_start, reason_start, int(ms_played), int(ms_latency), play_context, display_track, referrer, referrer_version, referrer_vendor]
+        args = [lid, source_start, reason_start, int(ms_played),
+                int(ms_latency), play_context, display_track, referrer,
+                referrer_version, referrer_vendor]
         return self.wrap_request("sp/track_progress", args, callback)
 
     def send_command(self, name, args=None, callback=None):
@@ -665,7 +696,8 @@ class SpotifyAPI():
                 callback = self.cmd_callbacks[pid]
 
                 if not callback:
-                    logger.debug("No callback was requested for command " + str(pid) + ", ignoring")
+                    logger.debug("No callback was requested for command " + str(
+                        pid) + ", ignoring")
                 elif type(callback) == list:
                     if len(callback) > 1:
                         callback[0](self, packet["result"], callback[1:])
@@ -686,12 +718,11 @@ class SpotifyAPI():
         if len(msg) > 1:
             payload = msg[1]
         if cmd == "do_work":
-            logger.debug("Got do_work message, payload: "+payload)
             self.send_command("sp/work_done", ["v1"], self.work_callback)
 
     def handle_error(self, err):
         if len(err) < 2:
-            logger.error("Unknown error "+str(err))
+            logger.error("Unknown error " + str(err))
 
         major = err["error"][0]
         minor = err["error"][1]
@@ -737,8 +768,8 @@ class SpotifyAPI():
             self.username = username
             self.password = password
 
-        logger.warning("Connecting to "+self.settings["wss"])
-        
+        logger.warning("Connecting to " + self.settings["wss"])
+
         try:
             self.ws = SpotifyClient(self.settings["wss"])
             self.ws.set_api(self)
