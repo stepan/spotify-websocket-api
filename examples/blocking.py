@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import sys
+from spotify_web import utils
+
 sys.path.append("..")
-from spotify_web.spotify import SpotifyAPI, SpotifyUtil
+from spotify_web.spotify import SpotifyAPI
 
 if len(sys.argv) < 4:
     print "Usage: "+sys.argv[0]+" <username> <password> <action> [URI]"
@@ -18,7 +20,7 @@ def display_playlist(playlist):
     print playlist.attributes.name+"\n"
 
     if playlist.length > 0:
-        track_uris = [track.uri for track in playlist.contents.items if not SpotifyUtil.is_local(track.uri)]
+        track_uris = [track.uri for track in playlist.contents.items if not utils.is_local(track.uri)]
         tracks = sp.metadata_request(track_uris)
         for track in tracks:
             print track.name
@@ -39,7 +41,7 @@ elif action == "album":
     album = sp.metadata_request(uri)
     print album.name+" - "+album.artist[0].name+"\n"
 
-    uris = [SpotifyUtil.gid2uri("track", track.gid) for track in album.disc[0].track]
+    uris = [utils.gid2uri("track", track.gid) for track in album.disc[0].track]
     tracks = sp.metadata_request(uris)
     for track in tracks:
         print track.name

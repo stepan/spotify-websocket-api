@@ -2,7 +2,6 @@ import logging
 import re
 import json
 import operator
-import binascii
 import base64
 from ssl import SSLError
 from threading import Thread, Event, Lock
@@ -12,10 +11,10 @@ from ws4py.client.threadedclient import WebSocketClient
 
 from .proto import (mercury_pb2, metadata_pb2, playlist4changes_pb2,
                     playlist4ops_pb2, playlist4service_pb2, toplist_pb2)
+from spotify_web import utils
 
 
 logger = logging.getLogger(__name__)
-base62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 class WrapAsync():
@@ -62,60 +61,6 @@ class SpotifyClient(WebSocketClient):
 
     def closed(self, code, message):
         self.api_object.shutdown()
-
-
-class SpotifyUtil():
-    @staticmethod
-    def gid2id(gid):
-        return binascii.hexlify(gid).rjust(32, "0")
-
-    @staticmethod
-    def id2uri(uritype, v):
-        res = []
-        v = int(v, 16)
-        while v > 0:
-            res = [v % 62] + res
-            v /= 62
-        guid = ''.join([base62[i] for i in res])
-        return ("spotify:" + uritype + ":" + guid).rjust(22, "0")
-
-    @staticmethod
-    def uri2id(uri):
-        parts = uri.split(":")
-        if len(parts) > 3 and parts[3] == "playlist":
-            s = parts[4]
-        else:
-            s = parts[2]
-
-        v = 0
-        for c in s:
-            v = v * 62 + base62.index(c)
-        return hex(v)[2:-1].rjust(32, "0")
-
-    @staticmethod
-    def gid2uri(uritype, gid):
-        guid = SpotifyUtil.gid2id(gid)
-        uri = SpotifyUtil.id2uri(uritype, guid)
-        return uri
-
-    @staticmethod
-    def get_uri_type(uri):
-        uri_parts = uri.split(":")
-
-        if len(uri_parts) >= 3 and uri_parts[1] == "local":
-            return "local"
-        elif len(uri_parts) >= 5:
-            return uri_parts[3]
-        elif len(uri_parts) >= 4 and uri_parts[3] == "starred":
-            return "playlist"
-        elif len(uri_parts) >= 3:
-            return uri_parts[1]
-        else:
-            return False
-
-    @staticmethod
-    def is_local(uri):
-        return SpotifyUtil.get_uri_type(uri) == "local"
 
 
 class SpotifyAPI():
@@ -237,7 +182,7 @@ class SpotifyAPI():
         track = self.recurse_alternatives(track)
         if not track:
             return False
-        args = ["mp3160", SpotifyUtil.gid2id(track.gid)]
+        args = ["mp3160", utils.gid2id(track.gid)]
         return self.wrap_request("sp/track_uri", args, callback)
 
     def parse_metadata(self, sp, resp, callback_data):
@@ -340,10 +285,10 @@ class SpotifyAPI():
 
         if available:
             logger.warning(
-                SpotifyUtil.gid2uri("track", track.gid) + " is available!")
+                utils.gid2uri("track", track.gid) + " is available!")
         else:
             logger.warning(
-                SpotifyUtil.gid2uri("track", track.gid) + " is NOT available!")
+                utils.gid2uri("track", track.gid) + " is NOT available!")
 
         return available
 
@@ -401,14 +346,14 @@ class SpotifyAPI():
             uris = [uris]
 
         for uri in uris:
-            uri_type = SpotifyUtil.get_uri_type(uri)
+            uri_type = utils.get_uri_type(uri)
             if uri_type == "local":
                 logger.warning(
                     "Track with URI {0} is a local track, we can't "
                     "request metadata, skipping".format(uri))
                 continue
 
-            sid = SpotifyUtil.uri2id(uri)
+            sid = utils.uri2id(uri)
 
             mercury_request = mercury_pb2.MercuryRequest()
             mercury_request.body = "GET"
@@ -416,7 +361,7 @@ class SpotifyAPI():
 
             mercury_requests.request.extend([mercury_request])
 
-        args = self.generate_multiget_args(SpotifyUtil.get_uri_type(uris[0]),
+        args = self.generate_multiget_args(utils.get_uri_type(uris[0]),
                                            mercury_requests)
 
         return self.wrap_request("sp/hm_b64", args, callback,

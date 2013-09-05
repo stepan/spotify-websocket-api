@@ -4,7 +4,8 @@ from Queue import Queue
 
 from lxml import etree
 
-from .spotify import SpotifyAPI, SpotifyUtil
+from .spotify import SpotifyAPI
+from spotify_web import utils
 
 
 class Cache(object):
@@ -56,7 +57,7 @@ class SpotifyCacheManager():
             "artist": self.artist_cache,
         }
 
-        uri_type = SpotifyUtil.get_uri_type(uri)
+        uri_type = utils.get_uri_type(uri)
         if uri_type not in cache:
             return False
 
@@ -69,10 +70,10 @@ class SpotifyObject():
         return self.getName()
 
     def getID(self):
-        return SpotifyUtil.gid2id(self.obj.gid)
+        return utils.gid2id(self.obj.gid)
 
     def getURI(self):
-        return SpotifyUtil.gid2uri(self.uri_type, self.obj.gid)
+        return utils.gid2uri(self.uri_type, self.obj.gid)
 
 
 class SpotifyMetadataObject(SpotifyObject):
@@ -107,7 +108,7 @@ class SpotifyTrack(SpotifyMetadataObject):
 
             if not new_obj.HasField("name"):
                 new_obj = self.spotify.api.metadata_request(
-                    SpotifyUtil.gid2uri("track", new_obj.gid))
+                    utils.gid2uri("track", new_obj.gid))
             self.old_obj = self.obj
             self.obj = new_obj
             self.replaced = True
@@ -279,7 +280,7 @@ class SpotifyPlaylist(SpotifyObject):
         uris = []
         for track in tracks:
             if track.replaced:
-                uris.append(SpotifyUtil.gid2uri("track", track.old_obj.gid))
+                uris.append(utils.gid2uri("track", track.old_obj.gid))
             else:
                 uris.append(self.getURI())
 
@@ -496,17 +497,17 @@ class Spotify():
             return ", ".join([obj.name for obj in objs])
 
         try:
-            uris = [SpotifyUtil.gid2uri(object_type, obj.gid) for obj in objs]
+            uris = [utils.gid2uri(object_type, obj.gid) for obj in objs]
         except:
-            uris = SpotifyUtil.gid2uri(object_type, objs.gid)
+            uris = utils.gid2uri(object_type, objs.gid)
 
         return self.objectFromURI(uris, asArray=True)
 
     def objectFromID(self, object_type, ids):
         try:
-            uris = [SpotifyUtil.id2uri(object_type, id) for id in ids]
+            uris = [utils.id2uri(object_type, id) for id in ids]
         except:
-            uris = SpotifyUtil.id2uri(object_type, ids)
+            uris = utils.id2uri(object_type, ids)
 
         return self.objectFromURI(uris, asArray=True)
 
@@ -519,7 +520,7 @@ class Spotify():
         if len(uris) == 0:
             return [] if asArray else None
 
-        uri_type = SpotifyUtil.get_uri_type(uris[0])
+        uri_type = utils.get_uri_type(uris[0])
         if not uri_type:
             return [] if asArray else None
         elif uri_type == "playlist":
@@ -539,7 +540,7 @@ class Spotify():
                 results = [v for k, v in thread_results.items()]
 
         elif uri_type in ["track", "album", "artist"]:
-            uris = [uri for uri in uris if not SpotifyUtil.is_local(uri)]
+            uris = [uri for uri in uris if not utils.is_local(uri)]
             objs = self.api.metadata_request(uris)
             objs = [objs] if type(objs) != list else objs
 
@@ -590,7 +591,7 @@ class Spotify():
         for image_obj in image_objs:
             size = str(image_obj.width)
             images[
-                size] = "https://d3rt1990lpmkn.cloudfront.net/" + size + "/" + SpotifyUtil.gid2id(
+                size] = "https://d3rt1990lpmkn.cloudfront.net/" + size + "/" + utils.gid2id(
                 image_obj.file_id)
 
         return images

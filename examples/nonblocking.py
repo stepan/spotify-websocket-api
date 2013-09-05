@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 import sys
+from spotify_web import utils
+
+
 sys.path.append("..")
-from spotify_web.spotify import SpotifyAPI, SpotifyUtil
+from spotify_web.spotify import SpotifyAPI
 
 
 def track_callback(sp, tracks):
@@ -12,7 +15,7 @@ def track_callback(sp, tracks):
 
 def album_callback(sp, album):
     print album.name + " - " + album.artist[0].name + "\n"
-    uris = [SpotifyUtil.gid2uri("track", track.gid) for track in album.disc[0].track]
+    uris = [utils.gid2uri("track", track.gid) for track in album.disc[0].track]
     sp.metadata_request(uris, track_callback)
 
 
