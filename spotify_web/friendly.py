@@ -1,10 +1,10 @@
 from functools import partial
-from lxml import etree
 from threading import Thread
 from Queue import Queue
 
+from lxml import etree
+
 from .spotify import SpotifyAPI, SpotifyUtil
-# from spotify_web.proto import mercury_pb2, metadata_pb2
 
 
 class Cache(object):
@@ -97,7 +97,8 @@ class SpotifyTrack(SpotifyMetadataObject):
     @Cache
     def isAvailable(self, country=None):
         country = self.spotify.api.country if country is None else country
-        new_obj = self.spotify.api.recurse_alternatives(self.obj, country=country)
+        new_obj = self.spotify.api.recurse_alternatives(self.obj,
+                                                        country=country)
         if not new_obj:
             return False
         else:
@@ -105,7 +106,8 @@ class SpotifyTrack(SpotifyMetadataObject):
             self._Cache__cache = {}
 
             if not new_obj.HasField("name"):
-                new_obj = self.spotify.api.metadata_request(SpotifyUtil.gid2uri("track", new_obj.gid))
+                new_obj = self.spotify.api.metadata_request(
+                    SpotifyUtil.gid2uri("track", new_obj.gid))
             self.old_obj = self.obj
             self.obj = new_obj
             self.replaced = True
@@ -136,11 +138,13 @@ class SpotifyTrack(SpotifyMetadataObject):
         if nameOnly:
             return self.obj.album.name
         else:
-            return self.spotify.objectFromInternalObj("album", self.obj.album)[0]
+            return self.spotify.objectFromInternalObj("album", self.obj.album)[
+                0]
 
     @Cache
     def getArtists(self, nameOnly=False):
-        return self.spotify.objectFromInternalObj("artist", self.obj.artist, nameOnly)
+        return self.spotify.objectFromInternalObj("artist", self.obj.artist,
+                                                  nameOnly)
 
 
 class SpotifyArtist(SpotifyMetadataObject):
@@ -157,7 +161,8 @@ class SpotifyArtist(SpotifyMetadataObject):
         return len(self.getTracks(objOnly=True))
 
     def getRelatedArtists(self, nameOnly=False):
-        return self.spotify.objectFromInternalObj("artist", self.obj.related, nameOnly)
+        return self.spotify.objectFromInternalObj("artist", self.obj.related,
+                                                  nameOnly)
 
     @Cache
     def getTracks(self, objOnly=False):
@@ -184,7 +189,8 @@ class SpotifyAlbum(SpotifyMetadataObject):
 
     @Cache
     def getArtists(self, nameOnly=False):
-        return self.spotify.objectFromInternalObj("artist", self.obj.artist, nameOnly)
+        return self.spotify.objectFromInternalObj("artist", self.obj.artist,
+                                                  nameOnly)
 
     def getCovers(self):
         return Spotify.imagesFromArray(self.obj.cover)
@@ -292,7 +298,9 @@ class SpotifyPlaylist(SpotifyObject):
 
         if self.obj.contents.truncated:
             def work_function(spotify, uri, start, tracks):
-                track_uris = [item.uri for item in spotify.api.playlist_request(uri, start).contents.items]
+                track_uris = [item.uri for item in
+                              spotify.api.playlist_request(uri,
+                                                           start).contents.items]
                 tracks += spotify.objectFromURI(track_uris, asArray=True)
 
             results = {}
@@ -353,7 +361,10 @@ class SpotifySearch():
         self.populate()
 
     def populate(self):
-        xml = self.spotify.api.search_request(self.query, query_type=self.query_type, max_results=self.max_results, offset=self.offset)
+        xml = self.spotify.api.search_request(self.query,
+                                              query_type=self.query_type,
+                                              max_results=self.max_results,
+                                              offset=self.offset)
         xml = xml[38:]  # trim UTF8 declaration
         self.result = etree.fromstring(xml)
 
@@ -369,7 +380,7 @@ class SpotifySearch():
         self.populate()
 
     def getName(self):
-        return "Search "+self.query_type+": "+self.query
+        return "Search " + self.query_type + ": " + self.query
 
     def getTracks(self):
         return self.getObjByID(self.result, "track")
@@ -387,7 +398,7 @@ class SpotifySearch():
         return self.getObjByURI(self.result, "playlist")
 
     def getObjByID(self, result, obj_type):
-        elems = result.find(obj_type+"s")
+        elems = result.find(obj_type + "s")
         if elems is None:
             elems = []
         ids = [elem[0].text for elem in list(elems)]
@@ -395,7 +406,7 @@ class SpotifySearch():
         return objs
 
     def getObjByURI(self, result, obj_type):
-        elems = result.find(obj_type+"s")
+        elems = result.find(obj_type + "s")
         if elems is None:
             elems = []
         uris = [elem[0].text for elem in list(elems)]
@@ -404,28 +415,34 @@ class SpotifySearch():
 
 
 class SpotifyToplist():
-    def __init__(self, spotify, toplist_content_type, toplist_type, username, region):
+    def __init__(self, spotify, toplist_content_type, toplist_type, username,
+                 region):
         self.spotify = spotify
         self.toplist_type = toplist_type
         self.toplist_content_type = toplist_content_type
         self.username = username
         self.region = region
-        self.toplist = self.spotify.api.toplist_request(toplist_content_type, toplist_type, username, region)
+        self.toplist = self.spotify.api.toplist_request(toplist_content_type,
+                                                        toplist_type, username,
+                                                        region)
 
     def getTracks(self):
         if self.toplist_content_type != "track":
             return []
-        return self.spotify.objectFromID(self.toplist_content_type, self.toplist.items)
+        return self.spotify.objectFromID(self.toplist_content_type,
+                                         self.toplist.items)
 
     def getAlbums(self):
         if self.toplist_content_type != "album":
             return []
-        return self.spotify.objectFromID(self.toplist_content_type, self.toplist.items)
+        return self.spotify.objectFromID(self.toplist_content_type,
+                                         self.toplist.items)
 
     def getArtists(self):
         if self.toplist_content_type != "artist":
             return []
-        return self.spotify.objectFromID(self.toplist_content_type, self.toplist.items)
+        return self.spotify.objectFromID(self.toplist_content_type,
+                                         self.toplist.items)
 
 
 class Spotify():
@@ -446,9 +463,10 @@ class Spotify():
         username = self.api.username if username is None else username
         playlist_uris = []
         if username == self.api.username:
-            playlist_uris += ["spotify:user:"+username+":starred"]
+            playlist_uris += ["spotify:user:" + username + ":starred"]
 
-        playlist_uris += [playlist.uri for playlist in self.api.playlists_request(username).contents.items]
+        playlist_uris += [playlist.uri for playlist in
+                          self.api.playlists_request(username).contents.items]
         return self.objectFromURI(playlist_uris)
 
     def newPlaylist(self, name):
@@ -462,13 +480,16 @@ class Spotify():
         return self.api.remove_playlist(playlist.getURI())
 
     def getUserToplist(self, toplist_content_type="track", username=None):
-        return SpotifyToplist(self, toplist_content_type, "user", username, None)
+        return SpotifyToplist(self, toplist_content_type, "user", username,
+                              None)
 
     def getRegionToplist(self, toplist_content_type="track", region=None):
-        return SpotifyToplist(self, toplist_content_type, "region", None, region)
+        return SpotifyToplist(self, toplist_content_type, "region", None,
+                              region)
 
     def search(self, query, query_type="all", max_results=50, offset=0):
-        return SpotifySearch(self, query, query_type=query_type, max_results=max_results, offset=offset)
+        return SpotifySearch(self, query, query_type=query_type,
+                             max_results=max_results, offset=offset)
 
     def objectFromInternalObj(self, object_type, objs, nameOnly=False):
         if nameOnly:
@@ -529,7 +550,8 @@ class Spotify():
             objs = [obj for obj in objs if False != obj]
             if uri_type == "track":
                 tracks = [SpotifyTrack(self, obj=obj) for obj in objs]
-                results = [track for track in tracks if False == self.AUTOREPLACE_TRACKS or track.isAvailable()]
+                results = [track for track in tracks if
+                           False == self.AUTOREPLACE_TRACKS or track.isAvailable()]
             elif uri_type == "album":
                 results = [SpotifyAlbum(self, obj=obj) for obj in objs]
             elif uri_type == "artist":
@@ -567,6 +589,8 @@ class Spotify():
         images = {}
         for image_obj in image_objs:
             size = str(image_obj.width)
-            images[size] = "https://d3rt1990lpmkn.cloudfront.net/" + size + "/" + SpotifyUtil.gid2id(image_obj.file_id)
+            images[
+                size] = "https://d3rt1990lpmkn.cloudfront.net/" + size + "/" + SpotifyUtil.gid2id(
+                image_obj.file_id)
 
         return images

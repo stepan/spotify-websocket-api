@@ -331,7 +331,8 @@ class SpotifyAPI():
                 "free": 0
             }
 
-            applicable = account_type_map[self.account_type] in restriction.catalogue
+            applicable = account_type_map[
+                             self.account_type] in restriction.catalogue
 
             available = allowed and not forbidden and applicable
             if available:
